@@ -12,10 +12,6 @@ import Foundation
  https://www.promisejs.org/patterns/
 */
 
-enum Foo: Error {
-    case baby
-}
-
 class Promise<T> {
 
     typealias ResolveCallback = ((T) -> Void)
@@ -84,10 +80,10 @@ class Promise<T> {
 
     @discardableResult func then<U>(_ next: @escaping ((T) -> Promise<U>) ) -> Promise<U> {
         return Promise<U> { fulfill, reject in
-            self.whoops { (err) in
+            self.catch { (err) in
                 reject(err)
             }.resolve { result in
-                next(result).whoops { (err) in
+                next(result).catch { (err) in
                     reject(err)
                 }.then { (finalResult) in
                     fulfill(finalResult)
@@ -98,7 +94,7 @@ class Promise<T> {
 
     @discardableResult func then<U>(_ next: @escaping ((T) throws -> U) ) -> Promise<U> {
         return Promise<U> { fulfill, reject in
-            self.whoops { (err) in
+            self.catch { (err) in
                 reject(err)
             }.resolve { result in
                 do {
@@ -111,7 +107,7 @@ class Promise<T> {
         }
     }
 
-    @discardableResult func whoops(_ resolve: @escaping ErrorCallback ) -> Promise<T> {
+    @discardableResult func `catch`(_ resolve: @escaping ErrorCallback ) -> Promise<T> {
         if let error = error {
             DispatchQueue.main.async {
                 resolve(error)
@@ -123,17 +119,6 @@ class Promise<T> {
     }
 
 }
-
-
-/*
- infix operator => { associativity left precedence 160 }
- func =><A,B>(_ input:Promise<A>, _ output:Promise<B>) -> Promise<B> {
- return Promise { fulfill, reject in
- input.then({ (val) in
-
- })
- }
- }*/
 
 
 

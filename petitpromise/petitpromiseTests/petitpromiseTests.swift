@@ -39,7 +39,7 @@ class petitpromiseTests: XCTestCase {
                 print("stackoverflow: \(sz)")
             }).then {
                 print("B")
-            }.whoops { (err) in
+            }.catch { (err) in
                 print("err: \(err)")
             }.then {
                 print("C")
@@ -48,7 +48,7 @@ class petitpromiseTests: XCTestCase {
         x.then {
             expect.fulfill()
             print("again?")
-        }.whoops { (err) in
+        }.catch { (err) in
             print("another error? \(err)")
         }
 
@@ -137,7 +137,7 @@ class petitpromiseTests: XCTestCase {
             DispatchQueue.global(qos: .default).async {
                 reject(TestError.error1)
             }
-        }.whoops { (err) in
+        }.catch { (err) in
             XCTAssert(err as! TestError == TestError.error1)
             expect.fulfill()
         }
@@ -149,7 +149,7 @@ class petitpromiseTests: XCTestCase {
         let expect = expectation(description: "promise")
         Promise<Void> { (fulfill, reject) in
             throw TestError.error2
-        }.whoops { (err) in
+        }.catch { (err) in
             XCTAssert(err as! TestError == TestError.error2)
             expect.fulfill()
         }
@@ -166,7 +166,7 @@ class petitpromiseTests: XCTestCase {
             }
         }.then { () -> Int in
             throw TestError.error1
-        }.whoops { (err) in
+        }.catch { (err) in
             XCTAssert(err as! TestError == TestError.error1)
             expect.fulfill()
         }
@@ -185,7 +185,7 @@ class petitpromiseTests: XCTestCase {
             return Promise<Void> { (fulfill, reject) in
                 throw TestError.error2
             }
-        }.whoops { (err) in
+        }.catch { (err) in
             XCTAssert(err as! TestError == TestError.error2)
             expect.fulfill()
         }
@@ -261,7 +261,7 @@ class petitpromiseTests: XCTestCase {
             throw TestError.error1
         }.then { () -> Void in
             throw TestError.error2
-        }.whoops { (err) in
+        }.catch { (err) in
             XCTAssert(err as! TestError == TestError.error1)
             expect.fulfill()
         }
