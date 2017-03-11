@@ -9,53 +9,10 @@
 import XCTest
 @testable import petitpromise
 
-enum FakeError: Error {
-    case tooMuchVanilla
-    case tooSpicy
+enum TestError: Error {
+    case error1
+    case error2
 }
-
-let htmlFailure = false
-let countStringFailure = false
-
-func getHTML(_ url:String) -> Promise<String> {
-    let url = URL(string: url)
-    return Promise { fullfill, reject in
-        let task = URLSession.shared.dataTask(with: url!) { data, response, error in
-
-            if htmlFailure {
-                reject(FakeError.tooSpicy)
-            } else {
-                guard let data = data, error == nil else {
-                    reject(error!)
-                    return
-                }
-
-                let result : String = NSString(data: data, encoding: String.Encoding.utf8.rawValue)! as String
-                fullfill(result)
-            }
-        }
-
-        task.resume()
-    }
-}
-
-func countString(_ input:String) -> Promise<Int> {
-    return Promise { fulfill, reject in
-        DispatchQueue.global(qos: .background).async {
-            if countStringFailure {
-                reject(FakeError.tooMuchVanilla)
-            } else {
-                let cnt = input.characters.count
-                fulfill(cnt)
-            }
-        }
-    }
-}
-
-func computeStringSize(_ input:String) -> Int {
-    return input.characters.count
-}
-
 
 class petitpromiseTests: XCTestCase {
     
@@ -101,12 +58,106 @@ class petitpromiseTests: XCTestCase {
 
         
     }
-    
-    func testPerformanceExample() {
-        // This is an example of a performance test case.
-        self.measure {
-            // Put the code you want to measure the time of here.
+
+    func testSimpleAsync() {
+        let expect = expectation(description: "promise")
+
+        Promise { (fulfill, reject) in
+            DispatchQueue.global(qos: .default).async {
+                fulfill()
+            }
+        }.then { () -> Void in
+            expect.fulfill()
+        }
+
+        waitForExpectations(timeout: 5) { (err) in }
+    }
+
+
+    func testSimpleSync() {
+        let expect = expectation(description: "promise")
+
+        Promise { (fulfill, reject) in
+            fulfill()
+        }.then { () -> Void in
+            expect.fulfill()
+        }
+
+        waitForExpectations(timeout: 5) { (err) in }
+    }
+
+    func testAsyncThen() {
+        let expect = expectation(description: "promise")
+        var result = 0
+
+        Promise { (fulfill, reject) in
+            DispatchQueue.global(qos: .default).async {
+                fulfill()
+            }
+        }.then { () -> Promise<Int> in
+            return Promise { (fulfill, reject) in
+                DispatchQueue.global(qos: .default).async {
+                    fulfill(5)
+                }
+            }
+        }.then { (theInteger) -> Void in
+            result = theInteger
+            expect.fulfill()
+        }
+
+        waitForExpectations(timeout: 5) { (err) in
+            XCTAssert(result == 5)
+        }
+
+    }
+
+    func testSyncThen() {
+        let expect = expectation(description: "promise")
+        var result = 0
+
+        Promise { (fulfill, reject) in
+            DispatchQueue.global(qos: .default).async {
+                fulfill()
+            }
+        }.then { () -> Int in
+            return 5
+        }.then { (theInteger) in
+            result = theInteger
+            expect.fulfill()
+        }
+
+        waitForExpectations(timeout: 5) { (err) in
+            XCTAssert(result == 5)
         }
     }
-    
+
+    func testSimpleError() {
+        let expect = expectation(description: "promise")
+        let _ : Promise<Void> = Promise { (fulfill, reject) in
+            DispatchQueue.global(qos: .default).async {
+                reject(TestError.error1)
+            }
+        }.whoops { (err) in
+            expect.fulfill()
+        }
+
+        waitForExpectations(timeout: 5) { (err) in }
+    }
+
+    func testExceptions() {
+
+    }
+
+    func testLongChain() {
+
+    }
+
+    func testMultipleThens() {
+
+    }
+
+    func testMultipleErrors() {
+
+    }
+
 }

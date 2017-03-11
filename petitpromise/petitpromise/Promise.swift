@@ -32,19 +32,23 @@ class Promise<T> {
     // called by an async function when it obtains a result
     // result is passed onto all waiting functions
     private func fulfill(result:T) {
-        self.result = result
-        for fn in successResolutions {
-            fn(result)
+        DispatchQueue.main.async {
+            self.result = result
+            for fn in self.successResolutions {
+                fn(result)
+            }
+            self.successResolutions = []
         }
-        successResolutions = []
     }
 
     private func reject(err:Error) {
-        self.error = err
-        for fn in errorResolutions {
-            fn(err)
+        DispatchQueue.main.async {
+            self.error = err
+            for fn in self.errorResolutions {
+                fn(err)
+            }
+            self.errorResolutions = []
         }
-        errorResolutions = []
     }
 
     private func resolve(_ resolve: @escaping ResolveCallback ) {
@@ -60,12 +64,12 @@ class Promise<T> {
         return Promise<U> { fulfill, reject in
             self.whoops { (err) in
                 reject(err)
-                }.resolve { result in
-                    next(result).whoops { (err) in
-                        reject(err)
-                        }.resolve { (finalResult) in
-                            fulfill(finalResult)
-                    }
+            }.resolve { result in
+                next(result).whoops { (err) in
+                    reject(err)
+                }.then { (finalResult) in
+                    fulfill(finalResult)
+                }
             }
         }
     }
@@ -74,9 +78,9 @@ class Promise<T> {
         return Promise<U> { fulfill, reject in
             self.whoops { (err) in
                 reject(err)
-                }.resolve { result in
-                    let x = next(result)
-                    fulfill(x)
+            }.resolve { result in
+                let x = next(result)
+                fulfill(x)
             }
         }
     }
