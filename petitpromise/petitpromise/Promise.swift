@@ -12,18 +12,30 @@ import Foundation
  https://www.promisejs.org/patterns/
 */
 
+enum Foo: Error {
+    case baby
+}
+
 class Promise<T> {
 
     typealias ResolveCallback = ((T) -> Void)
     typealias ErrorCallback = ((Error) -> Void)
-    typealias PromiseCallback = ( ( @escaping ResolveCallback, @escaping ErrorCallback ) -> Void )
+    typealias PromiseCallback = ( ( @escaping ResolveCallback, @escaping ErrorCallback ) throws -> Void )
 
     internal var fn: PromiseCallback?
     private var result: T?
     private var error: Error?
 
+    private let queue = DispatchQueue( label: "com.petitpromise.serialQueue" )
+
     init(_ fn: @escaping PromiseCallback) {
-        fn(fulfill, reject)
+        DispatchQueue.main.async {
+            do {
+                try fn(self.fulfill, self.reject)
+            } catch {
+                self.reject(err: error)
+            }
+        }
     }
 
     private var successResolutions: [ResolveCallback] = []
@@ -32,31 +44,41 @@ class Promise<T> {
     // called by an async function when it obtains a result
     // result is passed onto all waiting functions
     private func fulfill(result:T) {
-        DispatchQueue.main.async {
+        queue.async {
             self.result = result
-            for fn in self.successResolutions {
-                fn(result)
+            DispatchQueue.main.async {
+                for fn in self.successResolutions {
+                    fn(result)
+                }
+                self.successResolutions = []
             }
-            self.successResolutions = []
         }
     }
 
     private func reject(err:Error) {
-        DispatchQueue.main.async {
+        queue.async {
             self.error = err
-            for fn in self.errorResolutions {
-                fn(err)
+            DispatchQueue.main.async {
+                for fn in self.errorResolutions {
+                    fn(err)
+                }
+                self.errorResolutions = []
             }
-            self.errorResolutions = []
         }
     }
 
     private func resolve(_ resolve: @escaping ResolveCallback ) {
         if let result = result {
-            resolve(result)
+            DispatchQueue.main.async {
+                resolve(result)
+            }
         } else {
             successResolutions.append(resolve)
-            fn?(fulfill, reject)
+            do {
+                try fn?(fulfill, reject)
+            } catch {
+                reject(err: error)
+            }
         }
     }
 
@@ -74,20 +96,26 @@ class Promise<T> {
         }
     }
 
-    @discardableResult func then<U>(_ next: @escaping ((T) -> U) ) -> Promise<U> {
+    @discardableResult func then<U>(_ next: @escaping ((T) throws -> U) ) -> Promise<U> {
         return Promise<U> { fulfill, reject in
             self.whoops { (err) in
                 reject(err)
             }.resolve { result in
-                let x = next(result)
-                fulfill(x)
+                do {
+                    let x = try next(result)
+                    fulfill(x)
+                } catch {
+                    reject(error)
+                }
             }
         }
     }
 
     @discardableResult func whoops(_ resolve: @escaping ErrorCallback ) -> Promise<T> {
         if let error = error {
-            resolve(error)
+            DispatchQueue.main.async {
+                resolve(error)
+            }
         } else {
             errorResolutions.append(resolve)
         }

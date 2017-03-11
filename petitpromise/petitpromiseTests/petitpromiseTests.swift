@@ -133,11 +133,12 @@ class petitpromiseTests: XCTestCase {
 
     func testSimpleError() {
         let expect = expectation(description: "promise")
-        let _ : Promise<Void> = Promise { (fulfill, reject) in
+        Promise<Void> { (fulfill, reject) in
             DispatchQueue.global(qos: .default).async {
                 reject(TestError.error1)
             }
         }.whoops { (err) in
+            XCTAssert(err as! TestError == TestError.error1)
             expect.fulfill()
         }
 
@@ -145,19 +146,127 @@ class petitpromiseTests: XCTestCase {
     }
 
     func testExceptions() {
+        let expect = expectation(description: "promise")
+        Promise<Void> { (fulfill, reject) in
+            throw TestError.error2
+        }.whoops { (err) in
+            XCTAssert(err as! TestError == TestError.error2)
+            expect.fulfill()
+        }
 
+        waitForExpectations(timeout: 5) { (err) in }
     }
 
-    func testLongChain() {
+    func testThenException() {
+        let expect = expectation(description: "promise")
 
+        Promise { (fulfill, reject) in
+            DispatchQueue.global(qos: .default).async {
+                fulfill()
+            }
+        }.then { () -> Int in
+            throw TestError.error1
+        }.whoops { (err) in
+            XCTAssert(err as! TestError == TestError.error1)
+            expect.fulfill()
+        }
+
+        waitForExpectations(timeout: 5) { (err) in }
+    }
+
+    func testThenPromiseException() {
+        let expect = expectation(description: "promise")
+
+        Promise { (fulfill, reject) in
+            DispatchQueue.global(qos: .default).async {
+                fulfill()
+            }
+        }.then { () -> Promise<Void> in
+            return Promise<Void> { (fulfill, reject) in
+                throw TestError.error2
+            }
+        }.whoops { (err) in
+            XCTAssert(err as! TestError == TestError.error2)
+            expect.fulfill()
+        }
+
+        waitForExpectations(timeout: 5) { (err) in }
+    }
+
+
+    func testLongChain() {
+        let expect = expectation(description: "promise")
+
+        func addOne(_ cur:Int) -> Int {
+            return cur + 1
+        }
+
+        var result = 0
+        Promise { (fulfill, reject) in
+            DispatchQueue.global(qos: .default).async {
+                fulfill(1)
+            }
+        }.then(addOne).then(addOne).then(addOne).then(addOne).then(addOne).then(addOne).then(addOne)
+        .then { (val) -> Void in
+            result = val
+            expect.fulfill()
+        }
+
+        waitForExpectations(timeout: 5) { (err) in
+            XCTAssert(result == 8)
+        }
     }
 
     func testMultipleThens() {
+        /**
+         This is more of a white box test. We know how the execution works. The graph is
+         executed breadth first, so all of the side-effects should be executed before
+         the expectation is fulfilled.
+         
+         Recommended usage in this case would be to use Promise.all
+        */
+        let expect = expectation(description: "promise")
 
+        var result = 0
+        let p = Promise { (fulfill, reject) in
+            DispatchQueue.global(qos: .default).async {
+                fulfill(1)
+            }
+        }
+        p.then { (val) -> Void in result += 1 }
+        p.then { (val) -> Void in result += 1 }
+        p.then { (val) -> Void in result += 1 }
+        p.then { (val) -> Void in result += 1 }
+        .then {
+            expect.fulfill()
+        }
+        p.then { (val) -> Void in result += 1 }
+
+        waitForExpectations(timeout: 5) { (err) in
+            XCTAssert(result == 5)
+        }
     }
 
     func testMultipleErrors() {
+        /**
+         When an error occurs in the chain, it bubbles up. The first error should rule them all.
+        */
+        let expect = expectation(description: "promise")
 
+        Promise { (fulfill, reject) in
+            DispatchQueue.global(qos: .default).async {
+                fulfill()
+            }
+        }.then { () -> Void in
+            throw TestError.error1
+        }.then { () -> Void in
+            throw TestError.error2
+        }.whoops { (err) in
+            XCTAssert(err as! TestError == TestError.error1)
+            expect.fulfill()
+        }
+
+        waitForExpectations(timeout: 5) { (err) in }
     }
 
 }
