@@ -168,7 +168,7 @@
 					};
 				};
 			};
-			buildConfigurationList = 6337D3B21E7389290014AD69 /* Build configuration list for PBXProject "petitpromise" */;
+			buildConfigurationList = 6337D3B21E7389290014AD69 /* Build configuration list for PBXProject "PetitPromise" */;
 			compatibilityVersion = "Xcode 3.2";
 			developmentRegion = English;
 			hasScannedForEncodings = 0;
@@ -402,7 +402,7 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		6337D3B21E7389290014AD69 /* Build configuration list for PBXProject "petitpromise" */ = {
+		6337D3B21E7389290014AD69 /* Build configuration list for PBXProject "PetitPromise" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				6337D3CA1E7389290014AD69 /* Debug */,

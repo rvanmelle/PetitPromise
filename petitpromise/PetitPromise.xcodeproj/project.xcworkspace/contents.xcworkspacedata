@@ -2,6 +2,6 @@
 <Workspace
    version = "1.0">
    <FileRef
-      location = "self:petitpromise.xcodeproj">
+      location = "self:/Users/rvanmelle/brierwood/kitura/petitpromise/petitpromise/PetitPromise.xcodeproj">
    </FileRef>
 </Workspace>
